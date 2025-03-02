@@ -1,0 +1,44 @@
+{
+    "name": "wiz/filament-ai",
+    "description": "filament-ai is a powerful FilamentPHP plugin that integrates AI-powered features directly into your Filament forms.",
+    "keywords": [
+        "filament",
+        "filament-ai",
+        "laravel",
+        "laravel-package",
+        "filament-plugin",
+        "filamentphp",
+        "ai-image-generation",
+        "ai-content-generation"
+    ],
+    "license": "MIT",
+    "require": {
+        "spatie/laravel-package-tools": "^1.15.0",
+        "openai-php/laravel": "^0.11.0"
+    },
+    "require-dev": {
+    },
+    "autoload": {
+        "psr-4": {
+            "Wiz\\FilamentAI\\": "src/"
+        }
+    },
+    "scripts": {
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "phpstan/extension-installer": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Wiz\\FilamentAI\\FilamentAIServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
