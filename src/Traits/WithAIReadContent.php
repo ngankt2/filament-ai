@@ -11,7 +11,7 @@ trait WithAIReadContent
     public function withReadAI(array $options = [])
     {
         $this->hintAction(
-            app(GenerateAudioAction::class)->execute($this, null, [], $options)
+            app(GenerateAudioAction::class)->execute($this, $options)
         );
 
         return $this;

@@ -2,116 +2,101 @@
 
 namespace Wiz\FilamentAI\Forms\Actions;
 
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Select;
+use Filament\Forms;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\TextEntry;
 use Wiz\FilamentAI\FilamentAI;
 use Filament\Notifications\Notification;
 
 class GenerateAudioAction
 {
-    public function execute($field, $record, $data, array $options = [])
+    public function execute($field, array $options = [])
     {
+        $voices = app(FilamentAI::class)->getListVoices(); // Lấy danh sách voice từ OpenAI hoặc dịch vụ khác
+        $voices  = $voices->where('language','Vietnamese');
         return Action::make('generateAudioContent')
             ->label('Read Content With AI')
             ->icon('heroicon-s-microphone')
-            ->form([
-
-            ])
-            ->action(function (array $data) use ($field, $options) {
-                if (empty(config('openai.api_key'))) {
-                    Notification::make()
-                        ->warning()
-                        ->title('OpenAI API Key Missing')
-                        ->body('Please add your OpenAI API Key to the .env file before proceeding.')
-                        ->send();
-                    return;
-                }
-
-                try {
-                    $currentContent = $field->getState();
-                    if ($data['use_existing_content']) {
-                        $action = $data['existing_content_action'];
-
-                        switch ($action) {
-                            case 'refine':
-                                $prompt = "Refine the following text: $currentContent";
-                                break;
-                            case 'expand':
-                                $prompt = "Expand on the following text by adding more details, examples, or explanations. Ensure that your response is a continuation of the existing content and forms complete sentences and paragraphs: $currentContent";
-                                break;
-                            case 'shorten':
-                                $prompt = "Shorten the following text while maintaining its key points: $currentContent";
-                                break;
-                            default:
-                                throw new \Exception("Invalid action selected for existing content.");
-                        }
-                    } else {
-                        $prompt = $data['ai_prompt'] ?? null;
-                        if (empty($prompt)) {
-                            throw new \Exception("Prompt is empty or null. Form data: " . json_encode($data));
-                        }
-                    }
-
-                    $generatedContent = app(FilamentAI::class)->generateContent($prompt, $options);
-
-                    $textInputContent = $generatedContent;
-                    // Remove incomplete sentences
-                    $generatedContent = $this->removeIncompleteSentences($generatedContent);
-
-                    if ($data['use_existing_content'] && $data['existing_content_action'] === 'expand') {
-                        // Append the new content to the existing content
-                        $newContent = $currentContent . "\n\n" . $generatedContent;
-                    } elseif ($data['use_existing_content']) {
-                        // Replace the existing content for 'refine' and 'shorten' actions
-                        $newContent = $generatedContent;
-                    } else {
-                        // Append the new content to the existing content for non-existing content actions
-                        if ($field instanceof RichEditor) {
-                            $newContent = $currentContent . "\n\n" . $generatedContent;
-                        } elseif ($field instanceof Textarea) {
-                            $newContent = $currentContent . "\n" . $generatedContent;
-                        } else {
-                            $newContent = trim($currentContent . ' ' . $textInputContent);
-                        }
-                    }
-
-                    // Set the new content
-                    $field->state($newContent);
-
-                    // Notify the user of successful content generation
-                    Notification::make()
-                        ->success()
-                        ->title('Content Generated Successfully')
-                        ->body('The AI-generated content has been added to the field.')
-                        ->send();
-
-                } catch (\Exception $e) {
-                    // Notify the user if an error occurs
-                    Notification::make()
-                        ->danger()
-                        ->title('Error Generating Content')
-                        ->body('An error occurred while generating content: ' . $e->getMessage())
-                        ->send();
-                }
-            })
             ->modalHeading('Read Content with AI')
-            ->modalSubmitActionLabel('Read');
+            ->modalContent(fn (Action $action) => view('filament-ai::voices-list', ['voices' => $voices,'action'=>$action])) // Truyền dữ liệu vào view
+            ->registerModalActions([
+                Action::make('report')
+                    ->label('Generate Report')
+                    ->requiresConfirmation()
+                    ->action(function ($record) {
+                        // Xử lý khi nhấn vào report (ví dụ: Dump record)
+                        dump($record);
+                        // Thực hiện các hành động khác nếu cần
+                    }),
+            ])
+            ->slideOver()
+            ->modalSubmitAction(false); // Ẩn nút Submit vì không cần thiết
     }
-
-    private function removeIncompleteSentences($content)
+    public function playVoice($voiceId, $text)
     {
-        $sentences = preg_split('/(?<=[.!?])\s+/', $content, -1, PREG_SPLIT_NO_EMPTY);
-        $lastSentence = end($sentences);
-
-        // Check if the last sentence ends with a period, exclamation mark, or question mark
-        if (!preg_match('/[.!?]$/', $lastSentence)) {
-            // Remove the last sentence if it's incomplete
-            array_pop($sentences);
+        if (empty($voiceId) || empty($text)) {
+            Notification::make()
+                ->warning()
+                ->title('Missing Data')
+                ->body('Please select a voice and enter text before playing.')
+                ->send();
+            return;
         }
 
-        return implode(' ', $sentences);
+        try {
+            // Gọi API của OpenAI hoặc dịch vụ TTS khác
+            $audioUrl = app(FilamentAI::class)->getAudioUrl($voiceId, $text);
+
+            // Trả về một script để phát audio
+            $this->dispatchBrowserEvent('play-audio', ['audioUrl' => $audioUrl]);
+
+        } catch (\Exception $e) {
+            Notification::make()
+                ->danger()
+                ->title('Error Playing Audio')
+                ->body('An error occurred: ' . $e->getMessage())
+                ->send();
+        }
     }
+    public function readWithAI($voiceId, $text)
+    {
+        if (empty($voiceId) || empty($text)) {
+            Notification::make()
+                ->warning()
+                ->title('Missing Data')
+                ->body('Please select a voice and enter text before generating audio.')
+                ->send();
+            return;
+        }
+
+        try {
+            // Gọi API OpenAI hoặc dịch vụ khác để tạo giọng nói
+            $audioUrl = app(FilamentAI::class)->generateSpeech($voiceId, $text);
+
+            Notification::make()
+                ->success()
+                ->title('Audio Generated')
+                ->body('Click the button below to listen.')
+                ->actions([
+                    Forms\Components\Actions\Action::make('playGeneratedAudio')
+                        ->label('🔊 Play')
+                        ->url($audioUrl, true),
+                ])
+                ->send();
+
+        } catch (\Exception $e) {
+            Notification::make()
+                ->danger()
+                ->title('Error Generating Audio')
+                ->body('An error occurred: ' . $e->getMessage())
+                ->send();
+        }
+    }
+
 }

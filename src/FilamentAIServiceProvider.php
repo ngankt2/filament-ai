@@ -19,6 +19,7 @@ class FilamentAIServiceProvider extends PackageServiceProvider
     {
         $package
             ->name(static::$name)
+            ->hasViews('filament-ai')
             ->hasConfigFile();
     }
 

@@ -47,4 +47,18 @@ class FilamentAI
         return config('filament-ai.prompt_placeholders', []);
     }
 
+    /**
+     * @param $language = English
+     * @return \Illuminate\Support\Collection
+     */
+    public function getListVoices($language=null): \Illuminate\Support\Collection
+    {
+        $voices = file_get_contents(__DIR__ . '/../voices.json');
+        $voices =  Collect(json_decode($voices, true));
+        if($language){
+            return $voices->where('language', $language);
+        }
+        return $voices;
+    }
+
 }
