@@ -7,6 +7,7 @@ use Wiz\FilamentAI\Services\ImageGenerationService;
 
 class FilamentAI
 {
+
     protected $openAIService;
     protected $imageGenerationService;
 
