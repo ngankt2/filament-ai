@@ -25,8 +25,7 @@
             <button type="button"
                     onclick="playVoice('{{ $voice['id'] }}')"
                     class="ml-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 dark:bg-blue-700 dark:hover:bg-blue-600"
-            >
-                ▶ Play
+            > ▶ Play
             </button>
 
 
